@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Invia Foto Evento</title>
+    
+    <!-- Dropbox SDK -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/dropbox.js/10.11.0/Dropbox-sdk.min.js"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            /* Palette Colori Elegante */
+            --primary: #4F46E5;     /* Indaco vibrante */
+            --primary-dark: #4338ca;
+            --success: #10B981;     /* Smeraldo */
+            --success-dark: #059669;
+            --bg-gradient: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            --glass-bg: rgba(255, 255, 255, 0.92);
+            --text-main: #1e293b;
+            --text-sec: #64748b;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body { 
+            font-family: 'Poppins', sans-serif; 
+            margin: 0;
+            padding: 20px 20px calc(20px + env(safe-area-inset-bottom)) 20px;
+            background: var(--bg-gradient);
+            background-attachment: fixed;
+            color: var(--text-main);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .app-container { 
+            width: 100%;
+            max-width: 420px; 
+            background: var(--glass-bg); 
+            padding: 30px 25px; 
+            border-radius: 32px; 
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5); 
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            text-align: center;
+            position: relative;
+            z-index: 10;
+        }
+
+        h1 { 
+            font-size: 1.6rem; 
+            margin: 10px 0 5px 0; 
+            color: var(--text-main);
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle { 
+            color: var(--text-sec); 
+            margin-bottom: 25px; 
+            font-size: 0.9rem; 
+            font-weight: 400;
+        }
+        
+        /* Area Upload */
+        .upload-trigger {
+            background: #F8FAFC;
+            border: 2px dashed #CBD5E1;
+            padding: 40px 20px;
+            border-radius: 24px;
+            margin-bottom: 25px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upload-trigger:active {
+            transform: scale(0.98);
+            background: #EFF6FF;
+            border-color: var(--primary);
+        }
+
+        .upload-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            pointer-events: none;
+        }
+
+        .icon-camera {
+            width: 48px;
+            height: 48px;
+            color: var(--primary);
+            opacity: 0.8;
+        }
+
+        .upload-text {
+            font-weight: 600;
+            color: var(--text-sec);
+            font-size: 0.95rem;
+        }
+
+        /* Anteprima Immagine */
+        #preview-container {
+            display: none;
+            width: 100%;
+            height: 250px;
+            border-radius: 24px;
+            margin-bottom: 25px;
+            background-color: #000;
+            overflow: hidden;
+            position: relative;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+
+        #preview-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .change-photo-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 15px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+        }
+
+        /* Pulsanti Azione */
+        .btn-group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            width: 100%;
+        }
+
+        button { 
+            width: 100%; 
+            padding: 18px; 
+            border: none; 
+            border-radius: 20px; 
+            font-size: 1rem; 
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            cursor: pointer; 
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            transition: transform 0.2s;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        button:active { 
+            transform: scale(0.97); 
+        }
+
+        button:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* SVG Icons per buttons */
+        .btn-icon { width: 24px; height: 24px; }
+        
+        .btn-album { 
+            background: var(--primary); 
+            color: white; 
+        }
+        
+        .btn-print { 
+            background: var(--success); 
+            color: white; 
+        }
+
+        /* Overlay Caricamento */
+        #loading-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 1000;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            backdrop-filter: blur(5px);
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* Footer discreto */
+        footer {
+            margin-top: 25px;
+            color: rgba(255,255,255,0.5);
+            font-size: 0.75rem;
+            text-align: center;
+        }
+
+        /* Notifiche Toast (Successo/Errore) */
+        #toast {
+            visibility: hidden;
+            min-width: 250px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 50px;
+            padding: 16px;
+            position: fixed;
+            z-index: 1001;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s, bottom 0.3s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+            bottom: 40px;
+        }
+        
+        #toast.error { background-color: #ef4444; }
+        #toast.success { background-color: #10B981; }
+
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <h1>Condividi il Ricordo</h1>
+    <div class="subtitle">Aggiungi i tuoi scatti all'album dell'evento</div>
+    
+    <!-- Input File Nascosto -->
+    <input type="file" id="file-input" accept="image/*" onchange="handleFileSelect(event)" style="display: none;">
+    
+    <!-- Area di caricamento visiva -->
+    <div id="upload-trigger" class="upload-trigger" onclick="document.getElementById('file-input').click()">
+        <div class="upload-content">
+            <!-- Icona Camera SVG -->
+            <svg class="icon-camera" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+            <span class="upload-text">Tocca per scattare o scegliere</span>
+        </div>
+    </div>
+
+    <!-- Container Anteprima (inizialmente nascosto) -->
+    <div id="preview-container" onclick="document.getElementById('file-input').click()">
+        <img id="preview-image" src="#" alt="Anteprima">
+        <div class="change-photo-btn">Tocca per cambiare</div>
+    </div>
+    
+    <div class="btn-group">
+        <button id="btn-album" class="btn-album" onclick="uploadFile('album')">
+            <!-- Icona Folder -->
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+            Solo Album Digitale
+        </button>
+        <button id="btn-print" class="btn-print" onclick="uploadFile('stampa')">
+            <!-- Icona Print -->
+            <svg class="btn-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+            Carica e STAMPA
+        </button>
+    </div>
+</div>
+
+<footer>
+    Evento 2026 &bull; Powered by Dropbox
+</footer>
+
+<!-- Overlay Caricamento -->
+<div id="loading-overlay">
+    <div class="spinner"></div>
+    <h3 id="loading-text">Invio in corso...</h3>
+    <p style="font-size: 0.9rem; opacity: 0.8;">Non chiudere la pagina</p>
+</div>
+
+<!-- Toast Notification -->
+<div id="toast">Messaggio</div>
+
+<script>
+    // --- CONFIGURAZIONE ---
+    //Inserisci il tuo token qui
+    const ACCESS_TOKEN = 'sl.u.AGPOLMoFxv0bM2jWUhFoQXbRDXmM5nHbHwjtsR_z_h5ORsTslktP36GVWq-neuYOIvTL3Z_HDmABPh2pyh1lI3RpCSz5X1T8F46CY8UtzEeuqdAjRVdWByVMSem51n6mL18n4EGiEP4zd50RIVNlb6GXKtHfN7BJjQFlTZga4RMOiITs96S7WOimEUSSPpZgG5JEMDIqY_cw7GVlXQgDKxnhJE8o-zy7vpF8A8_thUJztrAEscsKQ-m3rOubhBq2RkRznJyO_WrbzQ8PrYMLypv-LrZDi-efxNnzOiZ8ApXZ54eCTMlceA9qB5KJWO94XB11ix-3L8b3WNcwnvz6J2YqgPNTueodN9cYWzuP-UpnVeiARmPXSeDHB51BtTr2ScJp5Lbov7OhkUbTXQVUBZ2FrWCqvllpTZyR8kpvN3lhCn-EqutaH96gy8w4VevaMxitW_P7236IPE4C9DQ3XD2wEeOCpu_1WNMC8-mLNb6l52x5VBaNXLfpXjtdMnimK9rB7KJRi7SP238w2wuroBBkhe8Xt-SfR8wR4ewI4oNmt-9QsE97Vy37JilCkyNhY0PL1LPycc2V6AJMEOQ-bkfoeDj3Nk5iIwnc1EJmeq29hiTnG7xQ9XYbmfFGjw3IhnmK3bp0VPDmemkRFT3jJ3aXhLz5uG1wlkfnQwAinyZ4oJQ2KncGspi7xxHZN9mBHR-wxT20zAhXTKxWBr3tcqSl3qbY47bwLgj5OR9MD50mSPXnDu7iy9ZEwZbbrKBUsgiAyfevCJkep62MM0PthcFy2xjCdx-3IBZZnBlSFLd3dUXCwzrBgboZ0_o7EDxmEEvk3Du1GqTZaHWvp8eJveluX63DN4_u1QpYBB64KEer0nBDgVUZjtxpqAsN9jVDOhrp6jlDtRM92sHFjLefPhDgPKmA8LU-gzjGEft4bIfzpdwGOt8l1zINrCv7orWUQTK-BU5UDLqEAgWYHFGjDZbELHWeT5MNfW_VCRjfvv0QgSbIIIsFdMsRfIYAzDYFuU1MTebAn5bSAbSSfqa9tLJMbcI5oAki2cJiqYvG5GpWMFGBDzYaknqufDkyZEKP5KbIQ7IWt1s8s9S3c7Sk_31VV7uVQkwF8ed6HchfHy_7mfLbDC12nDLrjyFXUKh--Xj1GoNeuHXWrUIJ38sk2j3asimzf6UY7LkK-AzZHxG0OHSe8lDkx6pnQE1LcYnagSfCEeSR4lZJ-uphrwR2ycALnKHoIA5w6jsGf5pWv47HS0RK4wT3a-xDMdkimKaSR4D5_7A-YJBKvRX2Luz8laU1'; 
+    const dbx = new Dropbox.Dropbox({ accessToken: ACCESS_TOKEN });
+
+    // Gestione selezione file
+    function handleFileSelect(event) {
+        const file = event.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                // Nascondi trigger upload, mostra anteprima
+                document.getElementById('upload-trigger').style.display = 'none';
+                const previewContainer = document.getElementById('preview-container');
+                const previewImage = document.getElementById('preview-image');
+                
+                previewImage.src = e.target.result;
+                previewContainer.style.display = 'block';
+                
+                // Scroll leggero verso i bottoni
+                setTimeout(() => {
+                    previewContainer.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }, 100);
+            }
+            reader.readAsDataURL(file);
+        }
+    }
+
+    // Mostra Toast (notifica a pillola)
+    function showToast(message, type = 'normal') {
+        const toast = document.getElementById("toast");
+        toast.className = type; // 'error', 'success' o vuoto
+        toast.innerText = message;
+        toast.classList.add("show");
+        
+        // Nascondi dopo 4 secondi
+        setTimeout(function(){ toast.classList.remove("show"); }, 4000);
+    }
+
+    function toggleLoading(show, text = "Invio in corso...") {
+        const overlay = document.getElementById('loading-overlay');
+        const loadingText = document.getElementById('loading-text');
+        
+        // Disabilita/Abilita bottoni per evitare doppio invio
+        document.getElementById('btn-album').disabled = show;
+        document.getElementById('btn-print').disabled = show;
+        
+        loadingText.innerText = text;
+        overlay.style.display = show ? 'flex' : 'none';
+    }
+
+    function resetUI() {
+        document.getElementById('file-input').value = "";
+        document.getElementById('upload-trigger').style.display = 'block';
+        document.getElementById('preview-container').style.display = 'none';
+    }
+
+    function uploadFile(folderName) {
+        const fileInput = document.getElementById('file-input');
+        
+        if (fileInput.files.length === 0) {
+            showToast("⚠️ Seleziona prima una foto!", "error");
+            const trigger = document.getElementById('upload-trigger');
+            trigger.style.transform = "translateX(5px)";
+            setTimeout(() => trigger.style.transform = "translateX(0)", 100);
+            setTimeout(() => trigger.style.transform = "translateX(-5px)", 200);
+            setTimeout(() => trigger.style.transform = "translateX(0)", 300);
+            return;
+        }
+
+        const file = fileInput.files[0];
+        
+        // --- CONTROLLI PRELIMINARI ---
+
+        // 1. Controllo Token
+        if (!ACCESS_TOKEN || ACCESS_TOKEN.includes('TUO_ACCESS_TOKEN')) {
+            showToast("❌ Errore Configurazione: Token mancante", "error");
+            return;
+        }
+
+        // 2. Controllo Dimensione (API standard limita a 150MB)
+        const LIMIT_MB = 150;
+        if (file.size > LIMIT_MB * 1024 * 1024) {
+            showToast(`❌ File troppo grande (Max ${LIMIT_MB}MB)`, "error");
+            return;
+        }
+
+        toggleLoading(true);
+
+        // --- PREPARAZIONE NOME FILE ---
+        const timestamp = new Date().getTime();
+        
+        // Separa l'estensione dal nome correttamente
+        let nameParts = file.name.split('.');
+        let extension = "";
+        let baseName = file.name;
+
+        if (nameParts.length > 1) {
+            extension = nameParts.pop(); // Prende l'ultima parte
+            baseName = nameParts.join('_'); // Unisce il resto
+        }
+
+        // Pulisce il nome base da caratteri speciali
+        const cleanName = baseName.replace(/[^a-zA-Z0-9]/g, '_');
+        
+        // Ricostruisce il nome file finale
+        const finalFileName = `${timestamp}_${cleanName}${extension ? '.' + extension : ''}`;
+        const path = `/${folderName}/${finalFileName}`;
+
+        // --- UPLOAD ---
+        dbx.filesUpload({ path: path, contents: file })
+            .then((response) => {
+                toggleLoading(false);
+                if (folderName === 'stampa') {
+                    showToast("🖨️ Inviata alla stampa!", "success");
+                } else {
+                    showToast("✅ Aggiunta all'album!", "success");
+                }
+                resetUI();
+            })
+            .catch((error) => {
+                console.error(error);
+                toggleLoading(false);
+                
+                let errorMsg = "❌ Errore di invio";
+                // Gestione errori specifici SDK Dropbox
+                if (error.status === 401) errorMsg = "❌ Token scaduto o non valido";
+                else if (error.status === 409) errorMsg = "❌ File già esistente";
+                else if (error.status === 413) errorMsg = "❌ File troppo grande";
+                else if (error.status === 0) errorMsg = "❌ Errore di connessione";
+                
+                showToast(errorMsg, "error");
+            });
+    }
+</script>
+
+</body>
+</html>
